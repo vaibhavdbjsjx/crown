@@ -36,45 +36,71 @@ struct ShareCardView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(red: 0.1, green: 0.09, blue: 0.12), Color(red: 0.02, green: 0.02, blue: 0.03)],
-                           startPoint: .top, endPoint: .bottom)
-            Circle().fill(Theme.gold.opacity(0.14)).blur(radius: 80).frame(width: 300).offset(x: 110, y: -170)
+            Theme.ink
+            Circle().fill(Theme.champagne.opacity(0.18)).frame(width: 320).blur(radius: 90).offset(x: 120, y: -190)
+            Circle().fill(Theme.bronze.opacity(0.14)).frame(width: 260).blur(radius: 90).offset(x: -140, y: 220)
+            Grain().opacity(0.6)
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 8) {
-                    Image(systemName: "crown.fill").foregroundStyle(Theme.goldGradient)
-                    Text("Crown").font(.system(size: 20, weight: .bold, design: .rounded))
+                HStack(spacing: 7) {
+                    Image(systemName: "crown.fill").font(.system(size: 13)).foregroundStyle(Theme.goldGradient)
+                    Text("CROWN").font(.system(size: 12, weight: .semibold)).tracking(4)
+                    Spacer()
+                    Text(Date().formatted(.dateTime.month(.abbreviated).year())).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.tertiary)
                 }
                 Spacer()
+                StaticDial(score: Double(content.score))
+                    .frame(width: 128, height: 128)
+                    .padding(.bottom, 26)
                 Text(content.headline)
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.goldGradient)
+                    .font(Typo.display(36))
+                    .foregroundStyle(Theme.ivory)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(content.subline)
-                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Theme.secondary)
                     .padding(.top, 8)
                 Spacer()
-                HStack(spacing: 28) {
-                    stat("\(content.score)", "Crown score")
-                    stat("\(content.stage)", "Stage")
+                Rectangle().fill(Theme.stroke).frame(height: 1).padding(.bottom, 16)
+                HStack(spacing: 0) {
+                    stat("\(content.score)", "Score")
+                    stat(content.stage.roman, "Stage")
                     stat("\(content.scanCount)", content.scanCount == 1 ? "Scan" : "Scans")
                 }
-                Text("Tracked privately with Crown")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(Theme.tertiary)
-                    .padding(.top, 22)
             }
-            .padding(30)
+            .padding(28)
         }
-        .foregroundStyle(.white)
-        .frame(width: 360, height: 450)
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .foregroundStyle(Theme.ivory)
+        .frame(width: 360, height: 480)
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Theme.edgeGradient))
     }
 
     private func stat(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(size: 30, weight: .bold, design: .rounded))
-            Text(label).font(.system(size: 12, design: .rounded)).foregroundStyle(Theme.secondary)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value).font(Typo.numeral(26, weight: .regular))
+            Eyebrow(label)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Non-animated dial so it renders correctly into an image.
+struct StaticDial: View {
+    let score: Double
+    var body: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            ZStack {
+                ForEach(0..<60, id: \.self) { i in
+                    Capsule()
+                        .fill(Double(i) / 60 < score / 100 ? AnyShapeStyle(Theme.goldGradient) : AnyShapeStyle(Color.white.opacity(0.1)))
+                        .frame(width: 2, height: size * 0.07)
+                        .offset(y: -size * 0.44)
+                        .rotationEffect(.degrees(Double(i) * 6))
+                }
+                Text("\(Int(score.rounded()))").font(Typo.numeral(size * 0.34))
+            }
+            .frame(width: size, height: size)
         }
     }
 }
@@ -97,8 +123,8 @@ struct ShareCardSheet: View {
                         .shadow(color: Theme.gold.opacity(0.18), radius: 30, y: 10)
                         .scaleEffect(appeared ? 1 : 0.94)
                         .opacity(appeared ? 1 : 0)
-                    Text("No photos are included, only your score and streak.")
-                        .font(.system(size: 13, design: .rounded)).foregroundStyle(Theme.tertiary)
+                    Text("No photos are included, only your score and progress.")
+                        .font(Typo.caption).foregroundStyle(Theme.tertiary)
                     if let rendered {
                         ShareLink(item: Image(uiImage: rendered), preview: SharePreview(content.headline, image: Image(uiImage: rendered))) {
                             Label("Share", systemImage: "square.and.arrow.up")
@@ -109,7 +135,7 @@ struct ShareCardSheet: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background.ignoresSafeArea())
+            .background(AppBackground())
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { appeared = true }

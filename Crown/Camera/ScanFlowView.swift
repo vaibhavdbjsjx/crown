@@ -41,7 +41,7 @@ struct ScanFlowView: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            AppBackground(intensity: 0.7)
             if let finishedScan {
                 ScanResultView(scan: finishedScan, isNew: true) { dismiss() }
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -70,9 +70,9 @@ struct ScanFlowView: View {
             header
             VStack(spacing: 6) {
                 Text(angle.title)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(Typo.display(30))
                 Text(angle.instruction)
-                    .font(.system(.subheadline, design: .rounded))
+                    .font(Typo.subhead)
                     .foregroundStyle(Theme.secondary)
                     .multilineTextAlignment(.center)
                     .frame(minHeight: 40)
@@ -147,7 +147,7 @@ struct ScanFlowView: View {
                 }
                 if let countdown {
                     Text("\(countdown)")
-                        .font(.system(size: 96, weight: .bold, design: .rounded))
+                        .font(Typo.numeral(110))
                         .foregroundStyle(.white)
                         .shadow(radius: 12)
                         .contentTransition(.numericText(countsDown: true))
@@ -183,9 +183,9 @@ struct ScanFlowView: View {
             Image(systemName: "camera.fill").font(.system(size: 34)).foregroundStyle(Theme.gold)
             Text(camera.authorization == .denied || camera.authorization == .restricted
                  ? "Camera access is off" : "Camera not available")
-                .font(.system(.headline, design: .rounded))
+                .font(Typo.title2)
             Text("You can import a photo from your library instead.")
-                .font(.system(.subheadline, design: .rounded))
+                .font(Typo.subhead)
                 .foregroundStyle(Theme.secondary)
                 .multilineTextAlignment(.center)
             if camera.authorization == .denied {
@@ -213,7 +213,7 @@ struct ScanFlowView: View {
                     chip("Light", camera.guidance.lighting)
                 }
                 Text(camera.guidance.hint)
-                    .font(.system(.footnote, design: .rounded).weight(.medium))
+                    .font(Typo.caption.weight(.medium))
                     .foregroundStyle(ready ? Theme.gold : Theme.secondary)
                     .animation(.easeInOut, value: camera.guidance.hint)
             }
@@ -226,7 +226,7 @@ struct ScanFlowView: View {
             Image(systemName: ok ? "checkmark.circle.fill" : "circle")
             Text(title)
         }
-        .font(.system(size: 12, weight: .semibold, design: .rounded))
+        .font(.system(size: 11.5, weight: .semibold))
         .foregroundStyle(ok ? Theme.positive : Theme.tertiary)
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(Theme.surface, in: Capsule())
@@ -248,7 +248,7 @@ struct ScanFlowView: View {
                 PhotosPicker(selection: $pickerItem, matching: .images) {
                     VStack(spacing: 4) {
                         Image(systemName: "photo.on.rectangle").font(.system(size: 20))
-                        Text("Import").font(.system(size: 11, weight: .medium, design: .rounded))
+                        Text("Import").font(Typo.micro)
                     }
                     .foregroundStyle(.white)
                     .frame(width: 70)
@@ -273,7 +273,7 @@ struct ScanFlowView: View {
                 Button(action: skip) {
                     VStack(spacing: 4) {
                         Image(systemName: "forward.fill").font(.system(size: 20))
-                        Text("Skip").font(.system(size: 11, weight: .medium, design: .rounded))
+                        Text("Skip").font(Typo.micro)
                     }
                     .foregroundStyle(.white)
                     .frame(width: 70)
@@ -358,7 +358,7 @@ struct ScanFlowView: View {
             let result = await HairAnalyzer.analyze(front: captured[.front], crown: captured[.crown])
             // Keep the analysis screen up long enough to read as deliberate.
             let elapsed = Date().timeIntervalSince(started)
-            if elapsed < 1.6 { try? await Task.sleep(nanoseconds: UInt64((1.6 - elapsed) * 1_000_000_000)) }
+            if elapsed < 2.2 { try? await Task.sleep(nanoseconds: UInt64((2.2 - elapsed) * 1_000_000_000)) }
             guard result.faceFound, result.hairlineRatio != nil else {
                 analyzing = false
                 errorMessage = "We couldn't find your face and hairline clearly. Retake the front photo in even light with your hair pulled back."
@@ -368,9 +368,12 @@ struct ScanFlowView: View {
             scan.hairlineRatio = result.hairlineRatio
             scan.templeRatio = result.templeRatio
             scan.crownCoverage = result.crownCoverage
+            scan.quality = result.quality
+            scan.markers = result.markers
             for (a, image) in captured { scan.setPhoto(PhotoStore.save(image), for: a) }
             context.insert(scan)
             try? context.save()
+            Reminders.scheduleCheckIn(after: scan.date)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             withAnimation(.spring(response: 0.6)) {
                 analyzing = false
@@ -381,35 +384,63 @@ struct ScanFlowView: View {
 }
 
 struct AnalyzingView: View {
-    @State private var rotate = false
-    @State private var pulse = false
+    @State private var step = 0
+    @State private var sweep = false
+    private let steps = ["Finding facial landmarks", "Separating you from the background", "Measuring hairline and temples", "Estimating crown coverage", "Grading photo quality"]
 
     var body: some View {
-        VStack(spacing: 28) {
+        VStack(alignment: .leading, spacing: 34) {
+            Spacer()
             ZStack {
-                Circle().stroke(Color.white.opacity(0.07), lineWidth: 10).frame(width: 140, height: 140)
-                Circle()
-                    .trim(from: 0, to: 0.28)
-                    .stroke(Theme.goldGradient, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .frame(width: 140, height: 140)
-                    .rotationEffect(.degrees(rotate ? 360 : 0))
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 42))
-                    .foregroundStyle(Theme.goldGradient)
-                    .scaleEffect(pulse ? 1.08 : 0.94)
+                HeadOutline()
+                    .stroke(Theme.ivory.opacity(0.5), style: StrokeStyle(lineWidth: 1.2))
+                    .frame(width: 130, height: 170)
+                HairlineCurve()
+                    .trim(from: 0, to: Double(step) / Double(steps.count))
+                    .stroke(Theme.goldGradient, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .frame(width: 130, height: 170)
+                Rectangle()
+                    .fill(LinearGradient(colors: [.clear, Theme.champagne, .clear], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: 190, height: 1.5)
+                    .shadow(color: Theme.champagne, radius: 8)
+                    .offset(y: sweep ? 90 : -90)
             }
-            VStack(spacing: 8) {
-                Text("Analyzing on your iPhone")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("Mapping hairline, temples and crown.\nYour photos never leave this device.")
-                    .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(Theme.secondary)
-                    .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            VStack(alignment: .leading, spacing: 8) {
+                Eyebrow("On-device analysis", color: Theme.champagne)
+                Text("Reading your\nscan.").font(Typo.display(40))
             }
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(steps.indices, id: \.self) { i in
+                    HStack(spacing: 12) {
+                        ZStack {
+                            if i < step {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.sage)
+                            } else if i == step {
+                                ProgressView().controlSize(.small).tint(Theme.champagne)
+                            } else {
+                                Circle().strokeBorder(Theme.tertiary, lineWidth: 1).frame(width: 14, height: 14)
+                            }
+                        }
+                        .frame(width: 20)
+                        Text(steps[i]).font(Typo.subhead).foregroundStyle(i <= step ? Theme.ivory : Theme.tertiary)
+                    }
+                    .animation(.easeInOut, value: step)
+                }
+            }
+            Label("Your photos never leave this iPhone", systemImage: "lock.fill")
+                .font(Typo.caption).foregroundStyle(Theme.tertiary)
+            Spacer()
         }
+        .padding(.horizontal, 28)
         .onAppear {
-            withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) { rotate = true }
-            withAnimation(.easeInOut(duration: 0.9).repeatForever()) { pulse = true }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { sweep = true }
+        }
+        .task {
+            for i in 1...steps.count {
+                try? await Task.sleep(nanoseconds: 380_000_000)
+                withAnimation(.easeInOut(duration: 0.3)) { step = i }
+            }
         }
     }
 }

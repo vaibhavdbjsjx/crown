@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- iOS OAuth client ID from Google Cloud Console, e.g. 1234-abcd.apps.googleusercontent.com.
+	     The "Continue with Gmail" button appears only when this is set. -->
+	<key>GoogleClientID</key>
+	<string></string>
+</dict>
+</plist>

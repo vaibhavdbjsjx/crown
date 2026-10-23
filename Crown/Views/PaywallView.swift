@@ -6,80 +6,98 @@ struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedID = "crown.pro.yearly"
     @State private var showPrivacy = false
-    @State private var appeared = false
+    @State private var shown = false
 
     private var selected: Product? { store.products.first { $0.id == selectedID } }
 
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 22) {
-                    VStack(spacing: 10) {
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 52))
-                            .foregroundStyle(Theme.goldGradient)
-                            .shadow(color: Theme.gold.opacity(0.5), radius: 20)
-                            .scaleEffect(appeared ? 1 : 0.6)
-                        Text("Crown Pro").font(.system(size: 32, weight: .bold, design: .rounded))
-                        Text("See what's really changing, month after month.")
-                            .font(.system(.subheadline, design: .rounded)).foregroundStyle(Theme.secondary)
-                    }
-                    .padding(.top, 12)
+    private let features: [(String, String, String)] = [
+        ("viewfinder", "Unlimited check-ins", "Guided scans with last-scan alignment"),
+        ("chart.xyaxis.line", "Full history & trend", "Every measurement, with journal markers"),
+        ("rectangle.split.2x1", "Compare & timelapse", "Slider compare and animated progress"),
+        ("doc.richtext", "Doctor-ready PDF", "A clean report for your dermatologist"),
+        ("checklist", "Routine & shed tracking", "Streaks, adherence and shedding trends"),
+    ]
 
-                    VStack(alignment: .leading, spacing: 14) {
-                        feature("camera.viewfinder", "Unlimited monthly check-ins", "Guided scans with your last photo as an alignment guide")
-                        feature("chart.line.uptrend.xyaxis", "Full history and trend line", "Every scan, every measurement, over time")
-                        feature("rectangle.split.2x1.fill", "Compare and timelapse", "Slider comparisons and animated progress")
-                        feature("checklist", "Routine tracking with streaks", "Daily and weekly steps, all in one place")
+    var body: some View {
+        ZStack {
+            AppBackground(intensity: 1.4)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    HStack {
+                        Spacer()
+                        IconButton(symbol: "xmark", label: "Close") { dismiss() }
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "crown.fill").foregroundStyle(Theme.goldGradient)
+                            Eyebrow("Crown Pro", color: Theme.champagne)
+                        }
+                        Text("See the full\npicture.")
+                            .font(Typo.display(46))
+                            .foregroundStyle(Theme.ivory)
+                        Text("Know what's changing, month after month, with the tools that make progress obvious.")
+                            .font(Typo.callout).foregroundStyle(Theme.secondary).lineSpacing(3)
+                    }
+                    .reveal(shown)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        ForEach(Array(features.enumerated()), id: \.offset) { i, f in
+                            HStack(spacing: 14) {
+                                Image(systemName: f.0).font(.system(size: 15)).foregroundStyle(Theme.champagne)
+                                    .frame(width: 36, height: 36)
+                                    .background(Theme.champagne.opacity(0.09), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(f.1).font(Typo.headline)
+                                    Text(f.2).font(Typo.caption).foregroundStyle(Theme.tertiary)
+                                }
+                            }
+                            .reveal(shown, index: i + 1)
+                        }
                     }
                     .card()
 
-                    plans
+                    plans.reveal(shown, index: 6)
 
                     if let message = store.message {
-                        Text(message).font(.system(size: 13, design: .rounded)).foregroundStyle(Theme.gold).multilineTextAlignment(.center)
+                        Text(message).font(Typo.caption).foregroundStyle(Theme.champagne).frame(maxWidth: .infinity)
                     }
 
                     Button {
                         guard let selected else { return }
                         Task {
                             await store.purchase(selected)
-                            if store.isPro { dismiss() }
+                            if store.isPro { Haptics.success(); dismiss() }
                         }
                     } label: {
-                        if store.purchasing { ProgressView().tint(.black) } else { Text(ctaTitle) }
+                        if store.purchasing { ProgressView().tint(Theme.ink) } else { Text(ctaTitle) }
                     }
                     .buttonStyle(PrimaryButtonStyle(enabled: selected != nil))
                     .disabled(selected == nil || store.purchasing)
 
                     Text(disclosure)
-                        .font(.system(size: 11, design: .rounded))
+                        .font(.system(size: 11))
                         .foregroundStyle(Theme.tertiary)
                         .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
 
-                    HStack(spacing: 18) {
+                    HStack(spacing: 20) {
                         Button("Restore") { Task { await store.restore(); if store.isPro { dismiss() } } }
-                        Link("Terms of Use", destination: Legal.termsURL)
-                        Button("Privacy Policy") { showPrivacy = true }
+                        Link("Terms", destination: Legal.termsURL)
+                        Button("Privacy") { showPrivacy = true }
                     }
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(Typo.caption.weight(.medium))
                     .foregroundStyle(Theme.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 20)
                 }
-                .padding(20)
+                .padding(.horizontal, 22)
             }
             .scrollIndicators(.hidden)
-            .background(Theme.background.ignoresSafeArea())
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark").foregroundStyle(Theme.secondary) }
-                        .accessibilityLabel("Close")
-                }
-            }
-            .sheet(isPresented: $showPrivacy) { NavigationStack { PrivacyPolicyView() } }
-            .onAppear {
-                store.message = nil
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) { appeared = true }
-            }
+        }
+        .sheet(isPresented: $showPrivacy) { NavigationStack { PrivacyPolicyView() } }
+        .onAppear {
+            store.message = nil
+            shown = true
         }
     }
 
@@ -88,46 +106,62 @@ struct PaywallView: View {
         if store.products.isEmpty {
             VStack(spacing: 12) {
                 if store.loadFailed {
-                    Text("Couldn't load plans from the App Store.").font(.system(.subheadline, design: .rounded)).foregroundStyle(Theme.secondary)
+                    Text("Couldn't load plans from the App Store.").font(Typo.subhead).foregroundStyle(Theme.secondary)
                     Button("Try again") { Task { await store.loadProducts() } }.buttonStyle(SecondaryButtonStyle())
                 } else {
-                    ProgressView().tint(Theme.gold)
+                    ProgressView().tint(Theme.champagne)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 120)
+            .frame(maxWidth: .infinity, minHeight: 130)
         } else {
             VStack(spacing: 10) {
-                if let yearly = store.yearly { planRow(yearly, badge: savingsBadge) }
-                if let weekly = store.weekly { planRow(weekly, badge: trialText(weekly)) }
+                if let yearly = store.yearly { planRow(yearly, title: "Yearly", badge: savingsBadge, perWeek: perWeek(yearly)) }
+                if let weekly = store.weekly { planRow(weekly, title: "Weekly", badge: trialText(weekly).map { "\($0) free" }, perWeek: nil) }
             }
         }
     }
 
-    private func planRow(_ product: Product, badge: String?) -> some View {
+    private func planRow(_ product: Product, title: String, badge: String?, perWeek: String?) -> some View {
         let isSelected = product.id == selectedID
-        return Button { withAnimation(.spring(response: 0.3)) { selectedID = product.id } } label: {
+        return Button {
+            Haptics.soft()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { selectedID = product.id }
+        } label: {
             HStack(spacing: 14) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22)).foregroundStyle(isSelected ? Theme.gold : Theme.tertiary)
+                ZStack {
+                    Circle().strokeBorder(isSelected ? Color.clear : Theme.tertiary, lineWidth: 1.5)
+                    if isSelected {
+                        Circle().fill(Theme.goldGradient)
+                        Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.ink)
+                    }
+                }
+                .frame(width: 24, height: 24)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(product.id == "crown.pro.yearly" ? "Yearly" : "Weekly").font(.system(.headline, design: .rounded))
-                    Text("\(product.displayPrice) per \(product.id == "crown.pro.yearly" ? "year" : "week")")
-                        .font(.system(size: 13, design: .rounded)).foregroundStyle(Theme.secondary)
+                    HStack(spacing: 8) {
+                        Text(title).font(Typo.title2)
+                        if let badge {
+                            Text(badge.uppercased()).font(.system(size: 9.5, weight: .bold)).tracking(0.8)
+                                .foregroundStyle(Theme.ink)
+                                .padding(.horizontal, 7).padding(.vertical, 3)
+                                .background(Theme.goldGradient, in: Capsule())
+                        }
+                    }
+                    Text(perWeek ?? "Billed weekly").font(Typo.caption).foregroundStyle(Theme.tertiary)
                 }
                 Spacer()
-                if let badge {
-                    Text(badge).font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(Theme.goldGradient, in: Capsule())
-                }
+                Text(product.displayPrice).font(Typo.numeral(22, weight: .regular))
             }
-            .padding(16)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(isSelected ? AnyShapeStyle(Theme.goldGradient) : AnyShapeStyle(Theme.stroke), lineWidth: isSelected ? 2 : 1))
+            .padding(18)
+            .background(isSelected ? Theme.champagne.opacity(0.07) : Theme.ink2.opacity(0.7), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(isSelected ? AnyShapeStyle(Theme.goldGradient) : AnyShapeStyle(Theme.edgeGradient), lineWidth: isSelected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
+    }
+
+    private func perWeek(_ yearly: Product) -> String {
+        let weekly = yearly.price / 52
+        return "Just \(weekly.formatted(yearly.priceFormatStyle)) per week, billed yearly"
     }
 
     private var savingsBadge: String? {
@@ -140,39 +174,25 @@ struct PaywallView: View {
 
     private func trialText(_ product: Product) -> String? {
         guard let offer = product.subscription?.introductoryOffer, offer.paymentMode == .freeTrial else { return nil }
-        return "\(periodText(offer.period)) free"
-    }
-
-    private func periodText(_ p: Product.SubscriptionPeriod) -> String {
-        switch p.unit {
-        case .day: "\(p.value)-day"
-        case .week: "\(p.value)-week"
-        case .month: "\(p.value)-month"
-        case .year: "\(p.value)-year"
-        @unknown default: "Trial"
+        switch offer.period.unit {
+        case .day: return "\(offer.period.value)-day"
+        case .week: return "\(offer.period.value)-week"
+        case .month: return "\(offer.period.value)-month"
+        case .year: return "\(offer.period.value)-year"
+        @unknown default: return nil
         }
     }
 
     private var ctaTitle: String {
-        if let selected, let trial = trialText(selected) { return "Start \(trial) trial" }
-        return "Continue"
+        if let selected, let trial = trialText(selected) { return "Start \(trial) free trial" }
+        return "Unlock Crown Pro"
     }
 
     private var disclosure: String {
         guard let selected else { return "" }
         let period = selected.id == "crown.pro.yearly" ? "year" : "week"
         var text = "\(selected.displayPrice) per \(period)"
-        if let trial = trialText(selected) { text = "\(trial.capitalized) trial, then " + text }
-        return text + ". Payment is charged to your Apple ID. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel any time in your App Store account settings."
-    }
-
-    private func feature(_ icon: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon).font(.system(size: 18)).foregroundStyle(Theme.gold).frame(width: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(.subheadline, design: .rounded).weight(.semibold))
-                Text(detail).font(.system(size: 12, design: .rounded)).foregroundStyle(Theme.secondary)
-            }
-        }
+        if let trial = trialText(selected) { text = "\(trial.capitalized) free trial, then " + text }
+        return text + ". Charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in your App Store account settings."
     }
 }

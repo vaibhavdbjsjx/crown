@@ -419,7 +419,11 @@ struct CompareView: View {
         Group {
             if let image = PhotoStore.load(scan?.photo(for: angle)) {
                 Image(uiImage: image).resizable().scaledToFill()
-                    .overlay { if angle == .front && showMarkers, let scan { MarkerOverlay(markers: scan.markers) } }
+                    .overlay {
+                        if angle == .front && showMarkers, let scan {
+                            MarkerOverlay(markers: scan.markers, aspect: Double(image.size.width / image.size.height))
+                        }
+                    }
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "camera").font(.system(size: 22))
@@ -487,12 +491,13 @@ struct AnglePicker: View {
 /// Draws brow line, hairline points and the measured span on the front photo.
 struct MarkerOverlay: View {
     let markers: [Double]
+    var aspect: Double = 3.0 / 4.0
     var body: some View {
         GeometryReader { geo in
             if markers.count >= 7 {
                 let w = geo.size.width, h = geo.size.height
-                // The photo is drawn scaledToFill; assume 3:4 source to map normalized points.
-                let (sx, sy, ox, oy) = fillTransform(container: geo.size, aspect: 3.0 / 4.0)
+                // The photo is drawn scaledToFill, so map normalized points through the same crop.
+                let (sx, sy, ox, oy) = fillTransform(container: geo.size, aspect: aspect)
                 let pt = { (x: Double, y: Double) in CGPoint(x: ox + x * sx, y: oy + y * sy) }
                 let brow = markers[0]
                 let mid = pt(markers[1], markers[2]), left = pt(markers[3], markers[4]), right = pt(markers[5], markers[6])
