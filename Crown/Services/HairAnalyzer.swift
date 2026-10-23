@@ -132,8 +132,9 @@ enum HairAnalyzer {
 
         init?(image: UIImage) {
             guard let cg = image.cgImage else { return nil }
-            width = cg.width
-            height = cg.height
+            let width = cg.width, height = cg.height
+            self.width = width
+            self.height = height
             var buffer = [UInt8](repeating: 0, count: width * height * 4)
             let ok = buffer.withUnsafeMutableBytes { ptr -> Bool in
                 guard let ctx = CGContext(data: ptr.baseAddress, width: width, height: height, bitsPerComponent: 8,
