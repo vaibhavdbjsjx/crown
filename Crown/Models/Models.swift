@@ -15,6 +15,12 @@ final class Scan {
     var templeRatio: Double?
     /// Share of the crown area covered by hair, 0...1.
     var crownCoverage: Double?
+    /// Photo quality 0–100 (light, sharpness, head angle). Low values make comparisons unreliable.
+    var quality: Double?
+    /// Normalized top-left image coordinates for the front photo overlay:
+    /// [browY, midX, midHairY, leftX, leftHairY, rightX, rightHairY, chinY]
+    var markers: [Double] = []
+    var note: String = ""
 
     init(date: Date = Date()) {
         self.date = date
@@ -51,6 +57,56 @@ final class Scan {
     }
 
     var allPhotos: [String] { [frontPhoto, leftPhoto, rightPhoto, crownPhoto].compactMap { $0 } }
+}
+
+@Model
+final class JournalEntry {
+    var id: UUID = UUID()
+    var date: Date = Date()
+    var text: String = ""
+    var kind: String = JournalKind.treatment.rawValue
+
+    init(date: Date, text: String, kind: JournalKind) {
+        self.date = date
+        self.text = text
+        self.kind = kind.rawValue
+    }
+
+    var journalKind: JournalKind { JournalKind(rawValue: kind) ?? .other }
+}
+
+enum JournalKind: String, CaseIterable, Identifiable {
+    case treatment, haircut, lifestyle, health, other
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .treatment: "Treatment"
+        case .haircut: "Haircut"
+        case .lifestyle: "Lifestyle"
+        case .health: "Health"
+        case .other: "Note"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .treatment: "cross.vial.fill"
+        case .haircut: "scissors"
+        case .lifestyle: "leaf.fill"
+        case .health: "heart.fill"
+        case .other: "text.quote"
+        }
+    }
+}
+
+@Model
+final class ShedLog {
+    var day: Date = Date()
+    var count: Int = 0
+
+    init(day: Date, count: Int) {
+        self.day = Calendar.current.startOfDay(for: day)
+        self.count = count
+    }
 }
 
 @Model
