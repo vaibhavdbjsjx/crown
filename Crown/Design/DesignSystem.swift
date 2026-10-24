@@ -335,7 +335,10 @@ struct Divider2: View {
 
 enum Legal {
     static let disclaimer = "Crown gives visual estimates for personal progress tracking only. It is not a medical device and does not diagnose, treat or recommend treatment for any condition. Speak with a doctor or dermatologist about hair loss."
-    static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    static let termsURL = URL(string: "https://crown-hairline.netlify.app/terms/")!
+    static let privacyURL = URL(string: "https://crown-hairline.netlify.app/privacy/")!
+    static let supportURL = URL(string: "https://crown-hairline.netlify.app/support/")!
+    static let supportEmail = URL(string: "mailto:Support.customer19@gmail.com")!
 }
 
 enum Haptics {

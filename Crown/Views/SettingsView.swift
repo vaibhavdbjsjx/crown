@@ -206,6 +206,10 @@ struct ProfileView: View {
             Divider2()
             Link(destination: Legal.termsURL) { LinkRow(symbol: "doc.text", title: "Terms of Use", external: true) }
             Divider2()
+            Link(destination: Legal.supportURL) { LinkRow(symbol: "questionmark.circle", title: "Help & support", external: true) }
+            Divider2()
+            Link(destination: Legal.supportEmail) { LinkRow(symbol: "envelope", title: "Email support", external: true) }
+            Divider2()
             Button { Task { await store.restore() } } label: { LinkRow(symbol: "arrow.clockwise", title: "Restore purchases") }
             if let message = store.message {
                 Text(message).font(Typo.caption).foregroundStyle(Theme.champagne).padding(.bottom, 8)
@@ -309,6 +313,7 @@ struct PrivacyPolicyView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Privacy Policy").font(Typo.display(34))
                     Text("Last updated October 2026").font(Typo.caption).foregroundStyle(Theme.tertiary)
+                    Link("View online", destination: Legal.privacyURL).font(Typo.caption.weight(.semibold))
                     block("In short", "Crown is built so your photos never leave your iPhone. There's no Crown server that receives your data, and no analytics or advertising SDKs.")
                     block("Photos", "Progress photos you take or import are saved in Crown's private storage on your device, excluded from iCloud backups, and never uploaded, shared or sold. You can delete any scan, or all data, at any time.")
                     block("Analysis", "Hairline, temple and crown estimates are calculated on your iPhone using Apple's Vision framework. No image or measurement is sent to us or to anyone else.")
