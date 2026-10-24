@@ -1,0 +1,30 @@
+"""App Store product page header (3840x1646)."""
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+W, H = 3840, 1646
+INK, IVORY, CHAMP, BRONZE = (9, 9, 11), (244, 239, 230), (234, 215, 168), (180, 133, 74)
+img = Image.new("RGBA", (W, H), INK + (255,))
+def glow(box, color, a, blur=300):
+    l = Image.new("RGBA", img.size, (0, 0, 0, 0)); ImageDraw.Draw(l).ellipse(box, fill=color + (a,))
+    img.alpha_composite(l.filter(ImageFilter.GaussianBlur(blur)))
+glow((2000, -600, 4200, 1600), CHAMP, 80); glow((-600, 700, 1400, 2400), BRONZE, 60)
+d = ImageDraw.Draw(img)
+serif = ImageFont.truetype("/System/Library/Fonts/NewYork.ttf", 210)
+sans = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", 64)
+eb = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", 52)
+icon = Image.open("Crown/Assets.xcassets/AppIcon.appiconset/icon.png").convert("RGBA").resize((200, 200))
+m = Image.new("L", (200, 200), 0); ImageDraw.Draw(m).rounded_rectangle((0, 0, 200, 200), 46, fill=255)
+img.paste(icon, (260, 330), m)
+d.text((500, 395), "C R O W N", font=eb, fill=CHAMP)
+d.multiline_text((250, 600), "Your hairline,\nmeasured.", font=serif, fill=IVORY, spacing=10)
+d.text((262, 1130), "Guided scans · On-device analysis · Private by design", font=sans, fill=IVORY + (170,))
+def phone(name, x, y, w):
+    s = Image.open(f"marketing/raw/{name}.png").convert("RGBA"); h = int(s.height * w / s.width)
+    s = s.resize((w, h), Image.LANCZOS); mk = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mk).rounded_rectangle((0, 0, w, h), int(w * 0.11), fill=255)
+    sh = Image.new("RGBA", img.size, (0, 0, 0, 0)); ImageDraw.Draw(sh).rounded_rectangle((x, y + 40, x + w, y + h), int(w * .11), fill=(0, 0, 0, 220))
+    img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(60))); img.paste(s, (x, y), mk)
+    ImageDraw.Draw(img).rounded_rectangle((x, y, x + w, y + h), int(w * .11), outline=CHAMP + (120,), width=5)
+phone("progress", 2380, 240, 640)
+phone("today", 3000, 120, 700)
+img.convert("RGB").save("marketing/appstore/header-3840x1646.png")
+print("ok")
