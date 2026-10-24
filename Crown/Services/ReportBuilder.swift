@@ -59,13 +59,11 @@ enum ReportBuilder {
                 y += 16; hr(y); y += 6
                 for scan in sorted.reversed() {
                     if y > page.height - 120 { ctx.beginPage(); y = margin }
-                    let values = [scan.date.formatted(date: .abbreviated, time: .omitted),
-                                  "\(Int(scan.score.rounded()))",
-                                  scan.hairlineScore.map { "\(Int($0.rounded()))" } ?? "–",
-                                  scan.templeScore.map { "\(Int($0.rounded()))" } ?? "–",
-                                  scan.crownScore.map { "\(Int($0.rounded()))" } ?? "–",
-                                  "\(scan.stage)",
-                                  scan.quality.map { "\(Int($0.rounded()))%" } ?? "–"]
+                    func fmt(_ v: Double?) -> String { v.map { String(Int($0.rounded())) } ?? "–" }
+                    let date: String = scan.date.formatted(date: .abbreviated, time: .omitted)
+                    let quality: String = scan.quality.map { String(Int($0.rounded())) + "%" } ?? "–"
+                    let values: [String] = [date, fmt(scan.score), fmt(scan.hairlineScore), fmt(scan.templeScore),
+                                            fmt(scan.crownScore), String(scan.stage), quality]
                     for (i, v) in values.enumerated() { drawAt(v, x: margin + cols[i].1, y: y, font: .systemFont(ofSize: 9.5), color: ink) }
                     y += 17
                 }
