@@ -41,6 +41,9 @@ struct CrownApp: App {
 struct RootView: View {
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @EnvironmentObject private var lock: AppLock
+    @Environment(\.modelContext) private var context
+
+    init() {}
 
     var body: some View {
         ZStack {
@@ -54,6 +57,9 @@ struct RootView: View {
                 LockScreen().transition(.opacity).zIndex(10)
             }
         }
+        #if DEBUG
+        .task { DemoData.seed(context); if DemoData.isEnabled { hasOnboarded = true } }
+        #endif
     }
 }
 
@@ -98,6 +104,7 @@ extension EnvironmentValues {
 struct MainTabView: View {
     @EnvironmentObject private var store: Store
     @Query private var scans: [Scan]
+    @Environment(\.modelContext) private var context
     @State private var tab: AppTab = .today
     @State private var showScan = false
     @State private var showPaywall = false
@@ -118,6 +125,12 @@ struct MainTabView: View {
         .environment(\.startScan, StartScanAction { startScan() })
         .fullScreenCover(isPresented: $showScan) { ScanFlowView() }
         .sheet(isPresented: $showPaywall) { PaywallView() }
+        .onAppear {
+            #if DEBUG
+            tab = DemoData.initialTab
+            if ProcessInfo.processInfo.arguments.contains("-paywall") { showPaywall = true }
+            #endif
+        }
     }
 
     private func startScan() {

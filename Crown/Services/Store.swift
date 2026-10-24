@@ -14,6 +14,9 @@ final class Store: ObservableObject {
     private var updates: Task<Void, Never>?
 
     init() {
+        #if DEBUG
+        if DemoData.isEnabled && !ProcessInfo.processInfo.arguments.contains("-paywall") { isPro = true }
+        #endif
         updates = Task { [weak self] in
             for await update in Transaction.updates {
                 if case .verified(let transaction) = update { await transaction.finish() }
@@ -43,6 +46,9 @@ final class Store: ObservableObject {
     }
 
     func refreshEntitlements() async {
+        #if DEBUG
+        if DemoData.isEnabled && !ProcessInfo.processInfo.arguments.contains("-paywall") { isPro = true; return }
+        #endif
         var active = false
         for await entitlement in Transaction.currentEntitlements {
             if case .verified(let t) = entitlement, Self.productIDs.contains(t.productID), t.revocationDate == nil {

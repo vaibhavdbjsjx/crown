@@ -147,18 +147,23 @@ struct AppBackground: View {
     }
 }
 
+/// Static film grain, rendered once and reused so animated backgrounds stay cheap.
 struct Grain: View {
-    var body: some View {
-        Canvas { ctx, size in
+    private static let tile: UIImage = {
+        let size = CGSize(width: 256, height: 256)
+        return UIGraphicsImageRenderer(size: size).image { ctx in
             var rng = SeededRandom(seed: 7)
-            let count = Int(size.width * size.height / 90)
-            for _ in 0..<count {
-                let x = rng.next() * size.width, y = rng.next() * size.height
-                ctx.fill(Path(CGRect(x: x, y: y, width: 1, height: 1)), with: .color(.white.opacity(0.035 + rng.next() * 0.03)))
+            for _ in 0..<900 {
+                UIColor.white.withAlphaComponent(0.035 + rng.next() * 0.03).setFill()
+                ctx.fill(CGRect(x: rng.next() * size.width, y: rng.next() * size.height, width: 1, height: 1))
             }
         }
-        .allowsHitTesting(false)
-        .drawingGroup()
+    }()
+
+    var body: some View {
+        Rectangle()
+            .fill(ImagePaint(image: Image(uiImage: Self.tile)))
+            .allowsHitTesting(false)
     }
 }
 

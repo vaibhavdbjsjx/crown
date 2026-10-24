@@ -71,7 +71,7 @@ struct PaywallView: View {
                     } label: {
                         if store.purchasing { ProgressView().tint(Theme.ink) } else { Text(ctaTitle) }
                     }
-                    .buttonStyle(PrimaryButtonStyle(enabled: selected != nil))
+                    .buttonStyle(PrimaryButtonStyle(enabled: selected != nil || demoPlans))
                     .disabled(selected == nil || store.purchasing)
 
                     Text(disclosure)
@@ -103,7 +103,12 @@ struct PaywallView: View {
 
     @ViewBuilder
     private var plans: some View {
-        if store.products.isEmpty {
+        if store.products.isEmpty && demoPlans {
+            VStack(spacing: 10) {
+                demoRow("crown.pro.yearly", "Yearly", "$29.99", "Save 81%", "Just $0.58 per week, billed yearly")
+                demoRow("crown.pro.weekly", "Weekly", "$2.99", "3-day free", "Billed weekly")
+            }
+        } else if store.products.isEmpty {
             VStack(spacing: 12) {
                 if store.loadFailed {
                     Text("Couldn't load plans from the App Store.").font(Typo.subhead).foregroundStyle(Theme.secondary)
@@ -159,6 +164,44 @@ struct PaywallView: View {
         .buttonStyle(.plain)
     }
 
+    private var demoPlans: Bool {
+        #if DEBUG
+        return DemoData.isEnabled
+        #else
+        return false
+        #endif
+    }
+
+    /// Debug-only stand-in used for screenshots when StoreKit isn't available in the simulator.
+    private func demoRow(_ id: String, _ title: String, _ price: String, _ badge: String, _ sub: String) -> some View {
+        let isSelected = id == selectedID
+        return HStack(spacing: 14) {
+            ZStack {
+                Circle().strokeBorder(isSelected ? Color.clear : Theme.tertiary, lineWidth: 1.5)
+                if isSelected {
+                    Circle().fill(Theme.goldGradient)
+                    Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.ink)
+                }
+            }
+            .frame(width: 24, height: 24)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Text(title).font(Typo.title2)
+                    Text(badge.uppercased()).font(.system(size: 9.5, weight: .bold)).tracking(0.8)
+                        .foregroundStyle(Theme.ink).padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Theme.goldGradient, in: Capsule())
+                }
+                Text(sub).font(Typo.caption).foregroundStyle(Theme.tertiary)
+            }
+            Spacer()
+            Text(price).font(Typo.numeral(22, weight: .regular))
+        }
+        .padding(18)
+        .background(isSelected ? Theme.champagne.opacity(0.07) : Theme.ink2.opacity(0.7), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .strokeBorder(isSelected ? AnyShapeStyle(Theme.goldGradient) : AnyShapeStyle(Theme.edgeGradient), lineWidth: isSelected ? 1.5 : 1))
+    }
+
     private func perWeek(_ yearly: Product) -> String {
         let weekly = yearly.price / 52
         return "Just \(weekly.formatted(yearly.priceFormatStyle)) per week, billed yearly"
@@ -189,7 +232,9 @@ struct PaywallView: View {
     }
 
     private var disclosure: String {
-        guard let selected else { return "" }
+        guard let selected else {
+            return demoPlans ? "$29.99 per year. Charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in your App Store account settings." : ""
+        }
         let period = selected.id == "crown.pro.yearly" ? "year" : "week"
         var text = "\(selected.displayPrice) per \(period)"
         if let trial = trialText(selected) { text = "\(trial.capitalized) free trial, then " + text }

@@ -40,7 +40,7 @@ struct RoutineView: View {
                         .padding(.top, 12)
                         .reveal(shown)
 
-                        Group {
+                        VStack(alignment: .leading, spacing: 16) {
                             if items.isEmpty {
                                 empty
                             } else {
